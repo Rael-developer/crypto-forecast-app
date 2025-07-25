@@ -1,64 +1,62 @@
 import streamlit as st
-import pandas as pd
+import plotly.graph_objects as go
+from prophet import Prophet
 from crypto_utils import get_price, get_historical_data, get_all_symbols
-from forecast_utils import treinar_previsao
-from telegram_bot import send_telegram
-from plotly import graph_objects as go
+import pandas as pd
 
-st.set_page_config(page_title="Previsão Cripto", layout="wide", page_icon="📈")
+# Configuração da página
+st.set_page_config(page_title="Previsão Cripto", layout="wide")
 
-st.title("📊 Previsão de Criptomoedas")
-st.markdown("### Previsões usando Binance + Prophet + Alertas do Telegram")
+# Título
+st.title("📈 Previsão de Criptomoedas com IA")
 
-st.sidebar.header("Configurações")
-symbol = st.sidebar.selectbox("Escolha a Cripto", get_all_symbols())
-dias = st.sidebar.slider("Dias de previsão", 1, 60, 30)
-alerta = st.sidebar.checkbox("Enviar alerta no Telegram", value=False)
+# Sidebar - Configurações
+st.sidebar.header("⚙️ Configurações")
+moedas = get_all_symbols()
+symbol = st.sidebar.selectbox("Escolha a Cripto", moedas, key="select_crypto")
+dias = st.sidebar.slider("Dias de Previsão", 1, 60, 30, key="forecast_days")
 
-with st.spinner("🔍 Obtendo preço atual..."):
-  moedas = get_all_symbols()
-symbol = st.sidebar.selectbox("Escolha a Cripto", moedas)
+# Exibe preço atual
+st.subheader(f"Preço Atual de {symbol}")
 preco_atual = get_price(symbol)
+if preco_atual:
+    st.metric(label="Preço Atual", value=f"${preco_atual:,.2f}")
+else:
+    st.error("Não foi possível obter o preço atual.")
 
-st.subheader("📈 Histórico e Previsão")
-with st.spinner("📥 Baixando dados históricos da Binance..."):
-   historico = get_historical_data(symbol, days=365)
+# Obtém histórico
+st.subheader(f"Histórico de {symbol}")
+historico = get_historical_data(symbol, days=365)
+
+# Verificação de dados
 if historico.empty or len(historico) < 2:
     st.warning(f"Sem dados suficientes para {symbol}. Tente outra moeda.")
     st.stop()
-else:
-    with st.spinner("🔮 Treinando modelo Prophet para previsão... (pode levar alguns segundos)"):
-        forecast = treinar_previsao(historico, dias)
 
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=historico['ds'], y=historico['y'], mode='markers',
-                             name='Histórico', marker=dict(color='black', size=5)))
-    fig.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat'], mode='lines',
-                             name='Previsão', line=dict(color='blue', width=2)))
+# Gráfico histórico
+fig_hist = go.Figure()
+fig_hist.add_trace(go.Scatter(x=historico['ds'], y=historico['y'],
+                              mode='lines', name='Histórico', line=dict(color='orange')))
+fig_hist.update_layout(title=f"Histórico de Preços - {symbol}", xaxis_title="Data", yaxis_title="Preço (USD)")
+st.plotly_chart(fig_hist, use_container_width=True)
 
-with st.spinner("🔮 Treinando modelo Prophet para previsão... (pode levar alguns segundos)"):
-    forecast = treinar_previsao(historico, dias)
+# Previsão com Prophet
+st.subheader("🔮 Previsão para os próximos dias")
+with st.spinner("Treinando modelo Prophet para previsão..."):
+    model = Prophet(daily_seasonality=True)
+    model.fit(historico)
+    future = model.make_future_dataframe(periods=dias)
+    forecast = model.predict(future)
 
-fig = go.Figure()
-fig.add_trace(go.Scatter(x=historico['ds'], y=historico['y'], mode='markers',
-                         name='Histórico', marker=dict(color='black', size=5)))
-fig.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat'], mode='lines',
-                         name='Previsão', line=dict(color='blue', width=2)))
-fig.add_trace(go.Scatter(
-    x=pd.concat([forecast['ds'], forecast['ds'][::-1]]),
-    y=pd.concat([forecast['yhat_upper'], forecast['yhat_lower'][::-1]]),
-    fill='toself', fillcolor='rgba(0,123,255,0.2)',
-    line=dict(color='rgba(255,255,255,0)'), hoverinfo="skip",
-    showlegend=True, name='Intervalo'
-))
-fig.update_layout(template="plotly_dark", hovermode="x unified",
-                  title=f"Previsão para {symbol}", xaxis_title="Data", yaxis_title="Preço (USDT)")
-st.plotly_chart(fig, use_container_width=True)
+# Gráfico previsão
+fig_forecast = go.Figure()
+fig_forecast.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat'], mode='lines',
+                                  name='Previsão', line=dict(color='blue')))
+fig_forecast.add_trace(go.Scatter(x=historico['ds'], y=historico['y'], mode='markers',
+                                  name='Histórico', marker=dict(color='black', size=5)))
+fig_forecast.update_layout(title=f"Previsão de {symbol} para {dias} dias", xaxis_title="Data", yaxis_title="Preço (USD)")
+st.plotly_chart(fig_forecast, use_container_width=True)
 
-st.subheader("📋 Dados previstos")
-st.write(forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail(dias))
-
-if alerta:
-    with st.spinner("📤 Enviando alerta para Telegram..."):
-        send_telegram(f"Preço atual de {symbol}: ${preco_atual:.2f}")
-    st.success("✅ Alerta enviado para o Telegram!")
+# Detalhes do forecast
+st.subheader("📊 Detalhes da Previsão")
+st.dataframe(forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail(dias))
