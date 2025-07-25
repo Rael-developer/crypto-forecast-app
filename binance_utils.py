@@ -4,10 +4,20 @@ from datetime import datetime
 
 BASE_URL = "https://api.binance.com"
 
-def get_price(symbol="BTCUSDT"):
-    url = f"{BASE_URL}/api/v3/ticker/price?symbol={symbol}"
-    r = requests.get(url).json()
-    return float(r['price'])
+def get_price(symbol):
+    url = f"{BASE_URL}/api/v3/ticker/price"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    try:
+        r = requests.get(url, headers=headers, params={"symbol": symbol}, timeout=10)
+        r.raise_for_status()
+        data = r.json()
+        if "price" in data:
+            return float(data['price'])
+        else:
+            # Se a resposta não contém price, significa erro
+            return None
+    except Exception as e:
+        return None
 
 def get_all_symbols():
     url = f"{BASE_URL}/api/v3/exchangeInfo"
@@ -17,7 +27,7 @@ def get_all_symbols():
         r.raise_for_status()
         data = r.json()
         if "symbols" not in data:
-            return ["BTCUSDT", "ETHUSDT", "BNBUSDT"]  # fallback
+            return ["BTC/USDT", "ETH/USDT", "BNB/USDT"]  # fallback
         symbols = [s['symbol'] for s in data['symbols'] if s['quoteAsset'] == 'USDT']
         return symbols
     except Exception as e:
