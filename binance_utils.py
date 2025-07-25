@@ -2,54 +2,48 @@ import requests
 import pandas as pd
 from datetime import datetime
 
-BASE_URL = "https://api.binance.com"
-
-def get_price(symbol):
-    url = f"{BASE_URL}/api/v3/ticker/price"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    try:
-        r = requests.get(url, headers=headers, params={"symbol": symbol}, timeout=10)
-        r.raise_for_status()
-        data = r.json()
-        if "price" in data:
-            return float(data['price'])
-        else:
-            # Se a resposta não contém price, significa erro
-            return None
-    except Exception as e:
-        return None
+COINGECKO_URL = "https://api.coingecko.com/api/v3"
 
 def get_all_symbols():
-    url = f"{BASE_URL}/api/v3/exchangeInfo"
-    headers = {"User-Agent": "Mozilla/5.0"}
+    """Retorna uma lista com criptos populares (id usado pelo CoinGecko)"""
     try:
-        r = requests.get(url, headers=headers, timeout=10)
+        url = f"{COINGECKO_URL}/coins/markets"
+        params = {"vs_currency": "usd", "order": "market_cap_desc", "per_page": 50, "page": 1}
+        r = requests.get(url, params=params, timeout=10)
         r.raise_for_status()
         data = r.json()
-        if "symbols" not in data:
-            return ["BTCUSDT", "ETHUSDT", "BNBUSDT"]  # fallback
-        symbols = [s['symbol'] for s in data['symbols'] if s['quoteAsset'] == 'USDT']
-        return symbols
-    except Exception as e:
-        return ["BTCUSDT", "ETHUSDT", "BNBUSDT"]  # fallback se der erro
-        
-def get_historical_data(symbol, interval="1d", limit=365):
-    url = f"{BASE_URL}/api/v3/klines"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    params = {"symbol": symbol, "interval": interval, "limit": limit}
+        return [coin["id"] for coin in data]  # exemplo: "bitcoin", "ethereum"
+    except:
+        return ["bitcoin", "ethereum", "binancecoin"]
+
+def get_price(coin_id):
+    """Retorna preço atual em USD"""
     try:
-        r = requests.get(url, headers=headers, params=params, timeout=10)
+        url = f"{COINGECKO_URL}/simple/price"
+        params = {"ids": coin_id, "vs_currencies": "usd"}
+        r = requests.get(url, params=params, timeout=10)
         r.raise_for_status()
-        data_json = r.json()
+        data = r.json()
+        return float(data[coin_id]["usd"])
+    except:
+        return None
 
-        # Se não vier lista (ou erro da API)
-        if not isinstance(data_json, list) or len(data_json) == 0:
-            return pd.DataFrame(columns=["ds", "y"])  # retorna vazio
+def get_historical_data(coin_id, days=365):
+    """Retorna histórico dos últimos X dias para forecast"""
+    try:
+        url = f"{COINGECKO_URL}/coins/{coin_id}/market_chart"
+        params = {"vs_currency": "usd", "days": days}
+        r = requests.get(url, params=params, timeout=10)
+        r.raise_for_status()
+        data = r.json()
 
-        data = []
-        for k in data_json:
-            data.append([datetime.fromtimestamp(k[0] / 1000), float(k[4])])
-        df = pd.DataFrame(data, columns=["ds", "y"])
-        return df
-    except Exception as e:
-        return pd.DataFrame(columns=["ds", "y"])  # fallback vazio
+        prices = data.get("prices", [])
+        if not prices:
+            return pd.DataFrame(columns=["ds", "y"])
+
+        df = pd.DataFrame(prices, columns=["timestamp", "price"])
+        df["ds"] = pd.to_datetime(df["timestamp"], unit="ms")
+        df["y"] = df["price"]
+        return df[["ds", "y"]]
+    except:
+        return pd.DataFrame(columns=["ds", "y"])
