@@ -16,17 +16,16 @@ dias = st.sidebar.slider("Dias de previsão", 1, 60, 30)
 alerta = st.sidebar.checkbox("Enviar alerta no Telegram", value=False)
 
 with st.spinner("🔍 Obtendo preço atual..."):
-   preco_atual = get_price(symbol)
-if preco_atual is None:
-    st.error(f"Não foi possível obter o preço de {symbol}. Verifique a API ou tente outra moeda.")
-else:
-    st.metric(label=f"Preço atual de {symbol}", value=f"${preco_atual:.2f}")
+  moedas = get_all_symbols()
+symbol = st.sidebar.selectbox("Escolha a Cripto", moedas)
+preco_atual = get_price(symbol)
 
 st.subheader("📈 Histórico e Previsão")
 with st.spinner("📥 Baixando dados históricos da Binance..."):
-   historico = get_historical_data(symbol)
-if historico.empty:
-    st.warning(f"Sem dados históricos para {symbol}. Tente outra moeda.")
+   historico = get_historical_data(symbol, days=365)
+if historico.empty or len(historico) < 2:
+    st.warning(f"Sem dados suficientes para {symbol}. Tente outra moeda.")
+    st.stop()
 else:
     with st.spinner("🔮 Treinando modelo Prophet para previsão... (pode levar alguns segundos)"):
         forecast = treinar_previsao(historico, dias)
