@@ -33,11 +33,23 @@ def get_all_symbols():
     except Exception as e:
         return ["BTCUSDT", "ETHUSDT", "BNBUSDT"]  # fallback se der erro
         
-def get_historical_data(symbol="BTCUSDT", interval="1d", limit=500):
-    url = f"{BASE_URL}/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
-    r = requests.get(url).json()
-    data = []
-    for k in r:
-        data.append([datetime.fromtimestamp(k[0]/1000), float(k[4])])
-    df = pd.DataFrame(data, columns=['ds', 'y'])
-    return df
+def get_historical_data(symbol, interval="1d", limit=365):
+    url = f"{BASE_URL}/api/v3/klines"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    params = {"symbol": symbol, "interval": interval, "limit": limit}
+    try:
+        r = requests.get(url, headers=headers, params=params, timeout=10)
+        r.raise_for_status()
+        data_json = r.json()
+
+        # Se não vier lista (ou erro da API)
+        if not isinstance(data_json, list) or len(data_json) == 0:
+            return pd.DataFrame(columns=["ds", "y"])  # retorna vazio
+
+        data = []
+        for k in data_json:
+            data.append([datetime.fromtimestamp(k[0] / 1000), float(k[4])])
+        df = pd.DataFrame(data, columns=["ds", "y"])
+        return df
+    except Exception as e:
+        return pd.DataFrame(columns=["ds", "y"])  # fallback vazio
