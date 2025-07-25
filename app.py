@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from crypto_utils import get_price, get_historical_data
+from crypto_utils import get_price, get_historical_data, get_all_symbols
 from forecast_utils import treinar_previsao
 from telegram_bot import send_telegram
 from plotly import graph_objects as go
