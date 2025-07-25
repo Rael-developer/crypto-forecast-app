@@ -28,7 +28,14 @@ with st.spinner("📥 Baixando dados históricos da Binance..."):
 if historico.empty:
     st.warning(f"Sem dados históricos para {symbol}. Tente outra moeda.")
 else:
-    # Mostra gráfico e previsão
+    with st.spinner("🔮 Treinando modelo Prophet para previsão... (pode levar alguns segundos)"):
+        forecast = treinar_previsao(historico, dias)
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=historico['ds'], y=historico['y'], mode='markers',
+                             name='Histórico', marker=dict(color='black', size=5)))
+    fig.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat'], mode='lines',
+                             name='Previsão', line=dict(color='blue', width=2)))
 
 with st.spinner("🔮 Treinando modelo Prophet para previsão... (pode levar alguns segundos)"):
     forecast = treinar_previsao(historico, dias)
