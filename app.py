@@ -1,24 +1,3 @@
-import plotly.graph_objects as go
-from prophet import Prophet
-import pandas as pd
-from datetime import date, timedelta, datetime
-
-# --- SEU CÓDIGO crypto_utils.py (ou as funções implementadas aqui) ---
-# Mantenha suas implementações reais para get_price, get_historical_data, get_all_symbols
-# Se você estiver usando as funções de exemplo, garanta que elas gerem dados suficientes
-from crypto_utils import get_price, get_historical_data, get_all_symbols
-# --- FIM DO SEU CÓDIGO crypto_utils.py ---
-
-
-# Configuração da página
-st.set_page_config(page_title="Previsão Cripto", layout="wide")
-
-# Título
-st.title("📈 Previsão de Criptomoedas com IA")
-st.markdown("Com *confiabilidade* de previsão e cotação em tempo real.")
-
-# --- Sidebar - Configura…
-[00:31, 25/07/2025] Mr. Robot: import streamlit as st
 import yfinance as yf
 from pycoingecko import CoinGeckoAPI
 import plotly.graph_objects as go
