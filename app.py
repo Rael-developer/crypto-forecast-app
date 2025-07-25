@@ -24,7 +24,11 @@ else:
 
 st.subheader("📈 Histórico e Previsão")
 with st.spinner("📥 Baixando dados históricos da Binance..."):
-    historico = get_historical_data(symbol)
+   historico = get_historical_data(symbol)
+if historico.empty:
+    st.warning(f"Sem dados históricos para {symbol}. Tente outra moeda.")
+else:
+    # Mostra gráfico e previsão
 
 with st.spinner("🔮 Treinando modelo Prophet para previsão... (pode levar alguns segundos)"):
     forecast = treinar_previsao(historico, dias)
