@@ -1,8 +1,8 @@
 import streamlit as st
 import plotly.graph_objects as go
 from prophet import Prophet
-from crypto_utils import get_price, get_historical_data, get_all_symbols
 import pandas as pd
+from crypto_utils import get_price, get_historical_data, get_all_symbols
 
 # Configuração da página
 st.set_page_config(page_title="Previsão Cripto", layout="wide")
@@ -28,6 +28,11 @@ else:
 st.subheader(f"Histórico de {symbol}")
 historico = get_historical_data(symbol, days=365)
 
+# Ajusta formato para Prophet
+historico = historico.dropna()
+historico['ds'] = pd.to_datetime(historico['ds'])
+historico['y'] = historico['y'].astype(float)
+
 # Verificação de dados
 if historico.empty or len(historico) < 2:
     st.warning(f"Sem dados suficientes para {symbol}. Tente outra moeda.")
@@ -48,13 +53,39 @@ with st.spinner("Treinando modelo Prophet para previsão..."):
     future = model.make_future_dataframe(periods=dias)
     forecast = model.predict(future)
 
-# Gráfico previsão
+# Gráfico previsão com pontinhos pretos e faixa de confiança
 fig_forecast = go.Figure()
-fig_forecast.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat'], mode='lines',
-                                  name='Previsão', line=dict(color='blue')))
-fig_forecast.add_trace(go.Scatter(x=historico['ds'], y=historico['y'], mode='markers',
-                                  name='Histórico', marker=dict(color='black', size=5)))
-fig_forecast.update_layout(title=f"Previsão de {symbol} para {dias} dias", xaxis_title="Data", yaxis_title="Preço (USD)")
+
+# Faixa de confiança
+fig_forecast.add_trace(go.Scatter(
+    x=forecast['ds'], y=forecast['yhat_upper'],
+    mode='lines', line=dict(width=0),
+    name='Upper', showlegend=False
+))
+fig_forecast.add_trace(go.Scatter(
+    x=forecast['ds'], y=forecast['yhat_lower'],
+    mode='lines', line=dict(width=0),
+    fill='tonexty', fillcolor='rgba(173,216,230,0.3)',
+    name='Confiança'
+))
+
+# Linha previsão
+fig_forecast.add_trace(go.Scatter(
+    x=forecast['ds'], y=forecast['yhat'],
+    mode='lines', name='Previsão', line=dict(color='blue', width=2)
+))
+
+# Histórico (pontinhos pretos)
+fig_forecast.add_trace(go.Scatter(
+    x=historico['ds'], y=historico['y'],
+    mode='markers', name='Histórico', marker=dict(color='black', size=5)
+))
+
+fig_forecast.update_layout(
+    title=f"Previsão de {symbol} para {dias} dias",
+    xaxis_title="Data", yaxis_title="Preço (USD)"
+)
+
 st.plotly_chart(fig_forecast, use_container_width=True)
 
 # Detalhes do forecast
