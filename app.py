@@ -16,8 +16,11 @@ dias = st.sidebar.slider("Dias de previsão", 1, 60, 30)
 alerta = st.sidebar.checkbox("Enviar alerta no Telegram", value=False)
 
 with st.spinner("🔍 Obtendo preço atual..."):
-    preco_atual = get_price(symbol)
-st.metric(label=f"Preço atual de {symbol}", value=f"${preco_atual:.2f}")
+   preco_atual = get_price(symbol)
+if preco_atual is None:
+    st.error(f"Não foi possível obter o preço de {symbol}. Verifique a API ou tente outra moeda.")
+else:
+    st.metric(label=f"Preço atual de {symbol}", value=f"${preco_atual:.2f}")
 
 st.subheader("📈 Histórico e Previsão")
 with st.spinner("📥 Baixando dados históricos da Binance..."):
