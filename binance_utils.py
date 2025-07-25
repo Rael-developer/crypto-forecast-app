@@ -31,7 +31,7 @@ def get_all_symbols():
         symbols = [s['symbol'] for s in data['symbols'] if s['quoteAsset'] == 'USDT']
         return symbols
     except Exception as e:
-        return ["BTCUSDT", "ETHUSDT", "BNBUSDT"]  # fallback se der erro
+        return ["BTC/USDT", "ETH/USDT", "BNB/USDT"]  # fallback se der erro
         
 def get_historical_data(symbol="BTCUSDT", interval="1d", limit=500):
     url = f"{BASE_URL}/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
